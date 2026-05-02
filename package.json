@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npm run postbuild",
-    "postbuild": "chown -R www-data:www-data /var/www/inovachat && systemctl reload nginx && echo '✅ Deploy concluído!'",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "keywords": [],
