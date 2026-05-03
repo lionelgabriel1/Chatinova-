@@ -33,10 +33,19 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expirado ou inválido
+      const currentPath = window.location.pathname;
+      
+      // Remove tokens expirados
       localStorage.removeItem('client_token');
       localStorage.removeItem('admin_token');
-      window.location.href = '/login';
+      
+      // Só redireciona se NÃO estiver em uma página pública/autenticação
+      const publicPages = ['/login', '/cadastro', '/cliente/login', '/cliente/cadastro'];
+      const isPublicPage = publicPages.some(page => currentPath.includes(page));
+      
+      if (!isPublicPage && currentPath !== '/login') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
