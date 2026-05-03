@@ -6,15 +6,14 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    chunkSizeWarningLimit: 2000,
+    chunkSizeWarningLimit: 3000, // Aumentado para evitar avisos com o chunk maior
     rollupOptions: {
       output: {
         manualChunks(id) {
+          // Agrupa todas as dependências externas em um único arquivo 'vendor'
+          // Isso evita o erro de inicialização (Circular Dependency)
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) return 'vendor';
-            if (id.includes('supabase')) return 'supabase';
-            if (id.includes('framer-motion') || id.includes('lucide')) return 'ui';
-            return 'libs';
+            return 'vendor';
           }
         }
       }
