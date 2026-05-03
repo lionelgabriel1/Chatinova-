@@ -6,7 +6,7 @@
       "destination": "http://178.104.98.89:4001/:path*"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]
