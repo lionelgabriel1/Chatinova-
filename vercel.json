@@ -6,7 +6,11 @@
       "destination": "http://178.104.98.89:4001/:path*"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/assets/:path*",
+      "destination": "/assets/:path*"
+    },
+    {
+      "source": "/((?!api/|assets/).*)",
       "destination": "/index.html"
     }
   ]
