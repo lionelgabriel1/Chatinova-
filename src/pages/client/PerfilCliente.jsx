@@ -133,7 +133,7 @@ export default function PerfilCliente() {
             <p className="text-sm text-slate-500 mb-6 leading-relaxed">
               Deseja alterar sua senha de acesso? Por segurança, enviaremos um link de confirmação no seu e-mail.
             </p>
-            <button className="w-full bg-white/5 border border-white/10 text-white font-bold py-4 rounded-2xl hover:bg-white/10 transition-all">
+            <button onClick={() => toast.info("Funcionalidade em desenvolvimento")} className="w-full bg-white/5 border border-white/10 text-white font-bold py-4 rounded-2xl hover:bg-white/10 transition-all">
               Alterar Senha
             </button>
           </div>
