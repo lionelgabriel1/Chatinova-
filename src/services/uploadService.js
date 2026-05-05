@@ -1,46 +1,27 @@
-import { supabase } from './supabase';
+import api from './api';
 
 export const uploadService = {
-  /**
-   * Faz upload de um arquivo para o bucket chat_arquivos
-   * @param {File} file - O arquivo a ser enviado
-   * @param {string} clienteId - ID do cliente para organizar pastas
-   */
   async uploadChatFile(file, clienteId) {
     try {
       if (!file) throw new Error('Nenhum arquivo selecionado.');
-      
-      // Limite de 10MB
       if (file.size > 10 * 1024 * 1024) {
         throw new Error('O arquivo excede o limite de 10MB.');
       }
 
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `${clienteId}/${fileName}`;
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('cliente_id', clienteId);
 
-      const { data, error } = await supabase.storage
-        .from('chat_arquivos')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
+      const response = await api.post('/api/upload/chat', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
 
-      if (error) throw error;
-
-      // Obter URL pública
-      const { data: { publicUrl } } = supabase.storage
-        .from('chat_arquivos')
-        .getPublicUrl(filePath);
-
-      return {
-        url: publicUrl,
-        nome: file.name,
-        tipo: file.type.startsWith('image/') ? 'imagem' : 'arquivo'
-      };
+      return response.data;
     } catch (error) {
-      console.error('Erro no uploadChatFile:', error);
-      throw error;
+      console.error('Erro no upload:', error);
+      throw new Error(error.response?.data?.error || error.message || 'Falha ao enviar arquivo.');
     }
   }
 };
