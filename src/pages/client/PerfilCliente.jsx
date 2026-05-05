@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { User, Mail, Phone, Shield, Lock, Save, LogOut, Eye, EyeOff, Key } from 'lucide-react';
 import ClienteLayout from '../../layouts/ClienteLayout';
 import { clientAuthService } from '../../services/clientAuthService';
-import { supabase } from '../../services/supabase';
 import { useToast } from '../../hooks/useToast';
 import api from '../../services/api';
 
@@ -19,7 +18,6 @@ export default function PerfilCliente() {
   });
   const [saving, setSaving] = useState(false);
 
-  // Estado para alteração de senha
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [passwordData, setPasswordData] = useState({
     novaSenha: '',
@@ -28,7 +26,6 @@ export default function PerfilCliente() {
   const [showPassword, setShowPassword] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
 
-  // Buscar dados do cliente ao carregar a página
   useEffect(() => {
     async function loadCliente() {
       const data = await clientAuthService.getClienteLogado();
@@ -75,15 +72,16 @@ export default function PerfilCliente() {
     }
     setChangingPassword(true);
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: passwordData.novaSenha
+      const response = await api.put('/api/client/change-password', {
+        novaSenha: passwordData.novaSenha
       });
-      if (error) throw error;
-      toast.success('Senha alterada com sucesso!');
-      setShowChangePassword(false);
-      setPasswordData({ novaSenha: '', confirmarSenha: '' });
+      if (response.data.success) {
+        toast.success('Senha alterada com sucesso!');
+        setShowChangePassword(false);
+        setPasswordData({ novaSenha: '', confirmarSenha: '' });
+      }
     } catch (error) {
-      toast.error('Erro ao alterar senha: ' + error.message);
+      toast.error('Erro ao alterar senha: ' + (error.response?.data?.error || error.message));
     } finally {
       setChangingPassword(false);
     }
