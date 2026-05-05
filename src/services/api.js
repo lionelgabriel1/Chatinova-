@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// URL do backend - pode ser configurada via .env
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4001';
 
 const api = axios.create({
@@ -33,10 +32,15 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expirado ou inválido
-      localStorage.removeItem('client_token');
-      localStorage.removeItem('admin_token');
-      window.location.href = '/login';
+      const currentPath = window.location.pathname;
+      const publicPages = ['/login', '/cadastro', '/esqueci-senha', '/'];
+      const isPublicPage = publicPages.some(page => currentPath.startsWith(page));
+      
+      if (!isPublicPage) {
+        localStorage.removeItem('client_token');
+        localStorage.removeItem('admin_token');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

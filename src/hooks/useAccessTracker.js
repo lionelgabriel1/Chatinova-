@@ -4,16 +4,18 @@ import { accessService } from '../services/accessService';
 import { logsService } from '../services/logsService';
 import { clientAuthService } from '../services/clientAuthService';
 
+const publicPages = ['/login', '/cadastro', '/esqueci-senha', '/'];
+
 export function useAccessTracker() {
   const location = useLocation();
   const lastPath = useRef(null);
   const heartbeatInterval = useRef(null);
   const [user, setUser] = useState(null);
   const trackInProgress = useRef(false);
+  const isPublic = publicPages.some(p => location.pathname.startsWith(p));
 
   useEffect(() => {
     let cancelled = false;
-    
     async function resolveUser() {
       try {
         const adminToken = localStorage.getItem('admin_token');
@@ -21,16 +23,14 @@ export function useAccessTracker() {
           if (!cancelled) setUser({ id: 'admin', nome: 'Admin', email: 'admin@interno.com', tipo: 'admin' });
           return;
         }
-
-        const cliente = await clientAuthService.getClienteLogado();
-        if (cliente && !cancelled) {
-          setUser({ ...cliente, tipo: 'cliente' });
-          return;
+        if (!isPublic) {
+          const cliente = await clientAuthService.getClienteLogado();
+          if (cliente && !cancelled) {
+            setUser({ ...cliente, tipo: 'cliente' });
+            return;
+          }
         }
-      } catch (e) {
-        // ignora
-      }
-
+      } catch (e) { /* ignora */ }
       if (!cancelled) {
         let visitorId = localStorage.getItem('visitor_id');
         if (!visitorId) {
@@ -40,69 +40,31 @@ export function useAccessTracker() {
         setUser({ id: visitorId, nome: 'Visitante', email: 'anonimo@visitante.com', tipo: 'visitante' });
       }
     }
-
     resolveUser();
     return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    if (!user) return;
-
+    if (!user || isPublic) return;
     const track = async () => {
-      // Evita múltiplas execuções simultâneas
       if (trackInProgress.current) return;
       trackInProgress.current = true;
-
       try {
         const path = location.pathname;
         const aba = document.title || 'InovaChat';
-
         await Promise.allSettled([
-          accessService.updatePresence({
-            usuario_id: user.id,
-            usuario_tipo: user.tipo,
-            nome: user.nome,
-            email: user.email,
-            rota_atual: path,
-            aba_atual: aba,
-            user_agent: navigator.userAgent
-          }),
-          lastPath.current !== path ? accessService.registerAccess({
-            usuario_id: user.id,
-            usuario_tipo: user.tipo,
-            nome: user.nome,
-            email: user.email,
-            pagina: path,
-            origem: lastPath.current || 'Entrada direta',
-            user_agent: navigator.userAgent
-          }) : Promise.resolve(),
-          (user.tipo !== 'visitante') ? logsService.createLog({
-            tipo: 'navegacao',
-            nivel: 'info',
-            titulo: `Acesso a ${path}`,
-            descricao: `${user.nome} navegou para ${path}`,
-            usuario_tipo: user.tipo,
-            usuario_id: user.id,
-            usuario_nome: user.nome,
-            usuario_email: user.email,
-            rota: path,
-            aba: aba
-          }) : Promise.resolve()
+          accessService.updatePresence({ usuario_id: user.id, usuario_tipo: user.tipo, nome: user.nome, email: user.email, rota_atual: path, aba_atual: aba, user_agent: navigator.userAgent }),
+          lastPath.current !== path ? accessService.registerAccess({ usuario_id: user.id, usuario_tipo: user.tipo, nome: user.nome, email: user.email, pagina: path, origem: lastPath.current || 'Entrada direta', user_agent: navigator.userAgent }) : Promise.resolve(),
+          (user.tipo !== 'visitante') ? logsService.createLog({ tipo: 'navegacao', nivel: 'info', titulo: `Acesso a ${path}`, descricao: `${user.nome} navegou para ${path}`, usuario_tipo: user.tipo, usuario_id: user.id, usuario_nome: user.nome, usuario_email: user.email, rota: path, aba: aba }) : Promise.resolve()
         ]);
         lastPath.current = path;
-      } catch (error) {
-        // Silencioso
-      } finally {
-        trackInProgress.current = false;
-      }
+      } catch (error) { /* Silencioso */ }
+      finally { trackInProgress.current = false; }
     };
-
     track();
     heartbeatInterval.current = setInterval(track, 30000);
-    return () => {
-      if (heartbeatInterval.current) clearInterval(heartbeatInterval.current);
-    };
-  }, [location.pathname, user]);
+    return () => { if (heartbeatInterval.current) clearInterval(heartbeatInterval.current); };
+  }, [location.pathname, user, isPublic]);
 
   return null;
 }
