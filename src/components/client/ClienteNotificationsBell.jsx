@@ -1,15 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Bell, 
-  X, 
-  Check, 
-  CheckCheck, 
-  Info, 
-  AlertTriangle, 
-  MessageSquare,
-  Clock,
-  ExternalLink
+import {
+  Bell, X, CheckCheck, Info, AlertTriangle, MessageSquare, Clock
 } from 'lucide-react';
 import { supabase } from '../../services/supabase';
 import { clientAuthService } from '../../services/clientAuthService';
@@ -20,10 +12,20 @@ export default function ClienteNotificationsBell() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef(null);
-  const cliente = clientAuthService.getClienteLogado();
+  const [cliente, setCliente] = useState(null);
   const toast = useToast();
 
+  // Buscar o cliente logado de forma assíncrona
+  useEffect(() => {
+    async function loadCliente() {
+      const data = await clientAuthService.getClienteLogado();
+      setCliente(data);
+    }
+    loadCliente();
+  }, []);
+
   const fetchNotifications = async () => {
+    if (!cliente?.id) return;
     try {
       const { data, error } = await supabase
         .from('notificacoes_clientes')
@@ -56,6 +58,7 @@ export default function ClienteNotificationsBell() {
   };
 
   const markAllAsRead = async () => {
+    if (!cliente?.id) return;
     try {
       const { error } = await supabase
         .from('notificacoes_clientes')
@@ -78,9 +81,9 @@ export default function ClienteNotificationsBell() {
 
       const channel = supabase
         .channel(`notifications_${cliente.id}`)
-        .on('postgres_changes', { 
-          event: 'INSERT', 
-          schema: 'public', 
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
           table: 'notificacoes_clientes',
           filter: `cliente_id=eq.${cliente.id}`
         }, (payload) => {
@@ -116,7 +119,7 @@ export default function ClienteNotificationsBell() {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-3 bg-slate-800/50 border border-white/5 rounded-2xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all group"
       >
@@ -130,18 +133,17 @@ export default function ClienteNotificationsBell() {
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 15, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             className="absolute right-0 mt-4 w-96 bg-slate-900 border border-white/10 rounded-[2rem] shadow-2xl z-[100] overflow-hidden backdrop-blur-2xl"
           >
-            {/* Dropdown Header */}
             <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5">
               <h4 className="text-white font-black text-sm uppercase tracking-widest">Notificações</h4>
               <div className="flex gap-2">
                 {unreadCount > 0 && (
-                  <button 
+                  <button
                     onClick={markAllAsRead}
                     className="text-[10px] font-black text-purple-400 hover:text-purple-300 uppercase tracking-widest flex items-center gap-1 transition-colors"
                   >
@@ -154,7 +156,6 @@ export default function ClienteNotificationsBell() {
               </div>
             </div>
 
-            {/* Notifications List */}
             <div className="max-h-[450px] overflow-y-auto custom-scrollbar">
               {notifications.length === 0 ? (
                 <div className="p-12 text-center">
@@ -163,7 +164,7 @@ export default function ClienteNotificationsBell() {
                 </div>
               ) : (
                 notifications.map((n) => (
-                  <div 
+                  <div
                     key={n.id}
                     onClick={() => !n.lida && markAsRead(n.id)}
                     className={`p-5 border-b border-white/5 hover:bg-white/5 transition-all cursor-pointer relative group ${!n.lida ? 'bg-purple-600/5' : ''}`}
@@ -199,7 +200,6 @@ export default function ClienteNotificationsBell() {
               )}
             </div>
 
-            {/* View All */}
             <div className="p-4 bg-white/5 text-center">
               <button className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-[0.2em] transition-all">
                 Ver todo o histórico
