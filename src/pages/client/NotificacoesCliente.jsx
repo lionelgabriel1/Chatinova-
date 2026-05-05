@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, CheckCircle, Info, AlertTriangle, XCircle, Calendar } from 'lucide-react';
+import { Bell, CheckCircle, Info, AlertTriangle, XCircle } from 'lucide-react';
 import ClienteLayout from '../../layouts/ClienteLayout';
 import { clientNotificationsService } from '../../services/clientPanelServices';
 import { clientAuthService } from '../../services/clientAuthService';
@@ -11,9 +11,19 @@ export default function NotificacoesCliente() {
   const toast = useToast();
   const [notificacoes, setNotificacoes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const cliente = clientAuthService.getClienteLogado();
+  const [cliente, setCliente] = useState(null);
+
+  // Buscar o cliente de forma assíncrona
+  useEffect(() => {
+    async function loadCliente() {
+      const data = await clientAuthService.getClienteLogado();
+      setCliente(data);
+    }
+    loadCliente();
+  }, []);
 
   const loadData = async () => {
+    if (!cliente?.id) return;
     try {
       setLoading(true);
       const data = await clientNotificationsService.getAll(cliente.id);
@@ -26,8 +36,10 @@ export default function NotificacoesCliente() {
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (cliente) {
+      loadData();
+    }
+  }, [cliente]);
 
   const handleMarkAsRead = async (id) => {
     try {
@@ -69,13 +81,13 @@ export default function NotificacoesCliente() {
           </div>
         ) : (
           notificacoes.map((notif) => (
-            <motion.div 
+            <motion.div
               key={notif.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className={`p-6 rounded-[2rem] border transition-all flex gap-4 ${
-                notif.lida 
-                ? 'bg-slate-900/20 border-white/5 opacity-60' 
+                notif.lida
+                ? 'bg-slate-900/20 border-white/5 opacity-60'
                 : 'bg-slate-900/60 border-white/10 shadow-lg shadow-black/20'
               }`}
             >
@@ -89,7 +101,7 @@ export default function NotificacoesCliente() {
                 </div>
                 <p className="text-sm text-slate-500 leading-relaxed">{notif.mensagem}</p>
                 {!notif.lida && (
-                  <button 
+                  <button
                     onClick={() => handleMarkAsRead(notif.id)}
                     className="mt-4 text-[10px] font-black text-purple-400 uppercase tracking-widest hover:text-purple-300 transition-colors"
                   >
