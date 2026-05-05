@@ -1,16 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Send, 
-  Smile, 
-  Paperclip, 
-  CheckCheck,
-  MessageSquare,
-  Circle,
-  ShieldCheck,
-  FileText,
-  Download,
-  Image as ImageIcon
+import {
+  Send, Smile, Paperclip, CheckCheck, MessageSquare, Circle,
+  ShieldCheck, FileText, Download, Image as ImageIcon
 } from 'lucide-react';
 import ClienteLayout from '../../layouts/ClienteLayout';
 import { chatService } from '../../services/chatService';
@@ -26,54 +18,36 @@ const MessageBubble = ({ msg, isMine }) => {
 
   return (
     <div className={`flex w-full mb-6 ${isMine ? 'justify-end' : 'justify-start'}`}>
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.95, x: isMine ? 20 : -20 }}
         animate={{ opacity: 1, scale: 1, x: 0 }}
         className={`max-w-[85%] md:max-w-[70%] p-5 rounded-[2rem] relative shadow-2xl ${
-          isMine 
-            ? 'bg-gradient-to-br from-purple-600 to-indigo-700 text-white rounded-tr-none' 
+          isMine
+            ? 'bg-gradient-to-br from-purple-600 to-indigo-700 text-white rounded-tr-none'
             : 'bg-slate-800/80 text-slate-100 rounded-tl-none border border-white/5 backdrop-blur-md'
         }`}
       >
-        {isImage && (
-          <div className="mb-3 rounded-2xl overflow-hidden cursor-pointer group relative">
-            <img 
-              src={msg.arquivo_url} 
-              alt="Anexo" 
-              className="max-w-full max-h-80 object-cover hover:scale-105 transition-transform duration-700" 
-              onClick={() => window.open(msg.arquivo_url, '_blank')}
-            />
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-              <Download size={24} className="text-white" />
-            </div>
+        {isImage && msg.arquivo_url ? (
+          <div className="mb-2">
+            <img src={msg.arquivo_url} alt="Imagem" className="rounded-xl w-full" />
           </div>
-        )}
-
-        {isFile && (
-          <a 
-            href={msg.arquivo_url} 
-            target="_blank" 
+        ) : isFile && msg.arquivo_url ? (
+          <a
+            href={msg.arquivo_url}
+            target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-4 p-4 bg-white/10 hover:bg-white/20 rounded-2xl mb-3 transition-all border border-white/5"
+            className="flex items-center gap-3 p-3 bg-white/10 rounded-xl mb-2 hover:bg-white/20 transition-colors"
           >
-            <div className="p-2.5 bg-purple-500 rounded-xl">
-              <FileText size={22} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-black truncate">{msg.arquivo_nome}</p>
-              <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">Clique para baixar</p>
-            </div>
-            <Download size={18} className="opacity-60" />
+            <FileText size={24} />
+            <span className="flex-1 truncate text-sm">{msg.arquivo_nome || 'Arquivo'}</span>
+            <Download size={20} />
           </a>
+        ) : (
+          <p className="text-sm md:text-base leading-relaxed">{msg.conteudo || msg.mensagem}</p>
         )}
-
-        {msg.conteudo && <p className="text-sm md:text-base font-medium leading-relaxed">{msg.conteudo}</p>}
-        
-        <div className={`flex items-center justify-end gap-1.5 mt-3 opacity-50`}>
-          <span className="text-[10px] font-black uppercase tracking-tighter">
-            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </span>
-          {isMine && <CheckCheck size={14} className={msg.lida ? 'text-emerald-400' : 'text-slate-300'} />}
+        <div className={`flex items-center gap-1 mt-3 text-xs ${isMine ? 'text-white/70' : 'text-slate-500'}`}>
+          <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          {isMine && (msg.lida ? <CheckCheck size={14} className="text-blue-400" /> : <CheckCheck size={14} />)}
         </div>
       </motion.div>
     </div>
@@ -82,221 +56,162 @@ const MessageBubble = ({ msg, isMine }) => {
 
 export default function MensagensCliente() {
   const toast = useToast();
-  const cliente = clientAuthService.getClienteLogado();
+  const [cliente, setCliente] = useState(null);
   const [mensagens, setMensagens] = useState([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(true);
   const [isEmojiOpen, setIsEmojiOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef(null);
-  const messagesEndRef = useRef(null);
-  const inputRef = useRef(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  // Buscar o cliente de forma assíncrona
+  useEffect(() => {
+    async function loadCliente() {
+      const data = await clientAuthService.getClienteLogado();
+      setCliente(data);
+    }
+    loadCliente();
+  }, []);
 
-  const loadData = async () => {
+  const carregarMensagens = async () => {
+    if (!cliente?.id) return;
     try {
-      if (!cliente?.id) return;
       setLoading(true);
       const msgs = await chatService.getMensagens(cliente.id);
-      setMensagens(msgs);
+      setMensagens(msgs || []);
       await chatService.marcarComoLida(cliente.id);
     } catch (error) {
-      toast.error('Falha ao carregar mensagens.');
+      console.error('Erro ao carregar mensagens:', error);
+      toast.error('Erro ao carregar mensagens.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEmojiSelect = (emoji) => {
-    const start = inputRef.current.selectionStart;
-    const end = inputRef.current.selectionEnd;
-    const text = inputText;
-    const newText = text.substring(0, start) + emoji + text.substring(end);
-    setInputText(newText);
-    setIsEmojiOpen(false);
-    
-    setTimeout(() => {
-      inputRef.current.focus();
-      inputRef.current.setSelectionRange(start + emoji.length, start + emoji.length);
-    }, 10);
-  };
-
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error('Limite de 10MB excedido.');
-        return;
-      }
-      setSelectedFile(file);
+  useEffect(() => {
+    if (cliente) {
+      carregarMensagens();
     }
-  };
+  }, [cliente]);
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if ((!inputText.trim() && !selectedFile) || isUploading) return;
+    if (!inputText.trim() && !selectedFile) return;
+    if (!cliente?.id) {
+      toast.error('Erro: dados do cliente não carregados.');
+      return;
+    }
 
-    setIsUploading(true);
-    try {
-      let fileData = null;
-      if (selectedFile) {
+    let fileData = null;
+    if (selectedFile) {
+      setIsUploading(true);
+      try {
         fileData = await uploadService.uploadChatFile(selectedFile, cliente.id);
+      } catch (error) {
+        toast.error('Falha ao enviar arquivo.');
+        setIsUploading(false);
+        return;
       }
+      setIsUploading(false);
+    }
 
+    try {
       await chatService.enviarMensagemCliente(cliente.id, inputText, fileData);
-      
       setInputText('');
       setSelectedFile(null);
     } catch (error) {
       toast.error(error.message || 'Erro ao enviar.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend(e);
     }
   };
 
   useEffect(() => {
-    loadData();
-
+    if (!cliente?.id) return;
     const subscription = chatService.subscribeMensagens(cliente.id, (newMsg) => {
-      setMensagens(prev => {
-        if (prev.find(m => m.id === newMsg.id)) return prev;
-        return [...prev, newMsg];
-      });
+      setMensagens((prev) => [...prev, newMsg]);
     });
-
-    return () => {
-      subscription?.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [mensagens]);
+    return () => { subscription?.unsubscribe(); };
+  }, [cliente]);
 
   return (
     <ClienteLayout>
-      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-black text-white tracking-tighter mb-2">Central de Atendimento</h1>
-          <p className="text-slate-500 font-medium">Tire suas dúvidas diretamente com nosso suporte técnico.</p>
-        </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
-          <Circle size={8} fill="currentColor" className="text-emerald-500 animate-pulse" />
-          <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.1em]">Suporte Online</span>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-4xl font-black text-white tracking-tighter mb-2 flex items-center gap-3">
+          <MessageSquare className="text-purple-400" size={28} />
+          Suporte
+        </h1>
+        <p className="text-slate-500 font-medium">Converse em tempo real com nosso time.</p>
       </div>
 
-      <div className="h-[70vh] min-h-[500px] flex flex-col bg-slate-900/40 rounded-[3rem] border border-white/5 overflow-hidden backdrop-blur-3xl shadow-2xl relative">
-        {/* Header */}
-        <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between bg-slate-900/60">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-[1.2rem] bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white shadow-xl shadow-purple-500/20">
-              <ShieldCheck size={28} />
-            </div>
-            <div>
-              <h4 className="font-black text-white text-lg tracking-tight">Equipe InovaChat</h4>
-              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest">Atendimento VIP em tempo real</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-10 scroll-smooth bg-slate-950/30 custom-scrollbar">
+      <div className="bg-slate-900/40 border border-white/5 rounded-[2.5rem] overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 220px)', minHeight: '500px' }}>
+        {/* Área de mensagens */}
+        <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar">
           {loading ? (
             <div className="flex items-center justify-center h-full">
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-12 h-12 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Sincronizando chat...</span>
-              </div>
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-500"></div>
             </div>
           ) : mensagens.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center opacity-40">
-              <div className="w-24 h-24 rounded-full bg-slate-800 flex items-center justify-center mb-6">
-                <MessageSquare size={40} className="text-slate-500" />
-              </div>
-              <p className="text-sm font-black text-slate-500 uppercase tracking-[0.2em]">Envie uma mensagem para iniciar o atendimento</p>
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <ShieldCheck size={64} className="text-slate-700 mb-4" />
+              <h3 className="text-white font-bold text-lg mb-2">Bem-vindo ao Suporte</h3>
+              <p className="text-slate-500 max-w-md">Envie sua primeira mensagem para começar a conversar com nossa equipe.</p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {mensagens.map(msg => (
-                <MessageBubble key={msg.id} msg={msg} isMine={msg.remetente_tipo === 'cliente'} />
-              ))}
-            </div>
+            mensagens.map((msg) => <MessageBubble key={msg.id} msg={msg} isMine={msg.remetente_tipo === 'cliente'} />)
           )}
-          <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
-        <div className="bg-slate-900/80 border-t border-white/5 backdrop-blur-2xl">
-          <FileUploadPreview 
-            file={selectedFile} 
-            onRemove={() => setSelectedFile(null)} 
-            isUploading={isUploading}
-          />
+        {/* Área de input */}
+        <div className="p-6 bg-slate-950/50 border-t border-white/5">
+          <AnimatePresence>
+            {selectedFile && <FileUploadPreview file={selectedFile} onRemove={() => setSelectedFile(null)} />}
+          </AnimatePresence>
+          <form onSubmit={handleSend} className="flex items-end gap-4 max-w-6xl mx-auto relative">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsEmojiOpen(!isEmojiOpen)}
+                className="p-4 bg-slate-800/50 border border-white/5 rounded-2xl text-slate-400 hover:text-white transition-colors"
+              >
+                <Smile size={20} />
+              </button>
+              <AnimatePresence>
+                {isEmojiOpen && (
+                  <EmojiPicker
+                    onSelect={(emoji) => { setInputText((prev) => prev + emoji.native); setIsEmojiOpen(false); }}
+                    onClose={() => setIsEmojiOpen(false)}
+                  />
+                )}
+              </AnimatePresence>
+            </div>
 
-          <div className="p-6 md:p-8">
-            <form onSubmit={handleSend} className="flex items-end gap-4 max-w-6xl mx-auto relative">
-              <div className="flex gap-1 mb-2">
-                <button 
-                  type="button" 
-                  onClick={() => setIsEmojiOpen(!isEmojiOpen)}
-                  className={`p-3 transition-colors ${isEmojiOpen ? 'text-purple-400' : 'text-slate-500 hover:text-purple-400'}`}
-                >
-                  <Smile size={28} />
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-3 text-slate-500 hover:text-purple-400 transition-colors"
-                >
-                  <Paperclip size={28} />
-                </button>
-              </div>
-
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                onChange={handleFileSelect}
-                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+            <label className="p-4 bg-slate-800/50 border border-white/5 rounded-2xl text-slate-400 hover:text-white transition-colors cursor-pointer">
+              <Paperclip size={20} />
+              <input
+                type="file"
+                className="hidden"
+                onChange={(e) => setSelectedFile(e.target.files[0])}
+                accept="image/*,.pdf,.doc,.docx,.txt"
               />
+            </label>
 
-              <EmojiPicker 
-                isOpen={isEmojiOpen} 
-                onEmojiSelect={handleEmojiSelect}
-                onClose={() => setIsEmojiOpen(false)}
-              />
-
-              <textarea 
-                ref={inputRef}
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                placeholder="Digite sua mensagem..."
+                className="w-full bg-slate-800/50 border border-white/5 rounded-2xl py-4 px-6 text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-500/50 transition-all"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Escreva sua mensagem aqui..."
-                rows={1}
-                className="flex-1 bg-slate-800/80 border border-white/5 rounded-[1.8rem] py-5 md:py-6 px-8 md:px-10 text-sm md:text-base text-white placeholder-slate-500 focus:ring-4 ring-purple-500/10 transition-all font-medium outline-none shadow-inner resize-none max-h-32"
               />
-              
-              <button 
-                disabled={(!inputText.trim() && !selectedFile) || isUploading}
-                type="submit"
-                className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-purple-600 to-indigo-700 hover:from-purple-500 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl shadow-purple-900/60 transition-all active:scale-90 shrink-0"
-              >
-                <Send size={28} />
-              </button>
-            </form>
-          </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isUploading || (!inputText.trim() && !selectedFile)}
+              className="p-4 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl shadow-lg shadow-purple-900/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              {isUploading ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : <Send size={20} />}
+            </button>
+          </form>
         </div>
       </div>
     </ClienteLayout>

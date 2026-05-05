@@ -1,31 +1,20 @@
 import { supabase } from './supabase';
 
 export const chatService = {
-  // Busca todos os clientes e anexa a última conversa se houver
   async getAdminChatContacts() {
-    // Primeiro pegamos todos os clientes
     const { data: clientes, error: clientesError } = await supabase
       .from('clientes')
-      .select(`
-        id,
-        nome,
-        sobrenome,
-        email,
-        status,
-        created_at
-      `)
+      .select(`id, nome, sobrenome, email, status, created_at`)
       .order('created_at', { ascending: false });
 
     if (clientesError) throw clientesError;
 
-    // Depois pegamos todas as conversas existentes
     const { data: conversas, error: conversasError } = await supabase
       .from('conversas')
       .select('*');
 
     if (conversasError) throw conversasError;
 
-    // Mapeamos os clientes para incluir os dados da conversa
     return (clientes || []).map(cliente => {
       const conversa = (conversas || []).find(c => c.cliente_id === cliente.id);
       return {
@@ -44,7 +33,7 @@ export const chatService = {
       .select('*')
       .eq('cliente_id', clienteId)
       .order('created_at', { ascending: true });
-    
+
     if (error) throw error;
     return data;
   },
@@ -62,7 +51,6 @@ export const chatService = {
       arquivo_nome: fileData?.nome || null
     };
 
-    // 1. Inserir a mensagem
     const { data: msg, error: msgError } = await supabase
       .from('mensagens_chat')
       .insert(payload)
@@ -71,16 +59,21 @@ export const chatService = {
 
     if (msgError) throw msgError;
 
-    // 2. Atualizar ou Criar a conversa
-    const { data: cliente } = await supabase.from('clientes').select('nome, sobrenome, email').eq('id', clienteId).single();
-    
-    await supabase.from('conversas').upsert({
-      cliente_id: clienteId,
-      nome_cliente: `${cliente.nome} ${cliente.sobrenome || ''}`.trim(),
-      email_cliente: cliente.email,
-      ultima_mensagem: fileData ? `📎 ${fileData.nome}` : conteudo,
-      ultima_mensagem_em: new Date().toISOString()
-    }, { onConflict: 'cliente_id' });
+    const { data: cliente } = await supabase
+      .from('clientes')
+      .select('nome, sobrenome, email')
+      .eq('id', clienteId)
+      .maybeSingle();
+
+    if (cliente) {
+      await supabase.from('conversas').upsert({
+        cliente_id: clienteId,
+        nome_cliente: `${cliente?.nome || 'Cliente'} ${cliente?.sobrenome || ''}`.trim(),
+        email_cliente: cliente.email,
+        ultima_mensagem: fileData ? `📎 ${fileData.nome}` : conteudo,
+        ultima_mensagem_em: new Date().toISOString()
+      }, { onConflict: 'cliente_id' });
+    }
 
     return msg;
   },
@@ -97,7 +90,6 @@ export const chatService = {
       arquivo_nome: fileData?.nome || null
     };
 
-    // 1. Inserir a mensagem
     const { data: msg, error: msgError } = await supabase
       .from('mensagens_chat')
       .insert(payload)
@@ -106,16 +98,21 @@ export const chatService = {
 
     if (msgError) throw msgError;
 
-    // 2. Atualizar a conversa
-    const { data: cliente } = await supabase.from('clientes').select('nome, sobrenome, email').eq('id', clienteId).single();
+    const { data: cliente } = await supabase
+      .from('clientes')
+      .select('nome, sobrenome, email')
+      .eq('id', clienteId)
+      .maybeSingle();
 
-    await supabase.from('conversas').upsert({
-      cliente_id: clienteId,
-      nome_cliente: `${cliente.nome} ${cliente.sobrenome || ''}`.trim(),
-      email_cliente: cliente.email,
-      ultima_mensagem: fileData ? `📎 ${fileData.nome}` : conteudo,
-      ultima_mensagem_em: new Date().toISOString()
-    }, { onConflict: 'cliente_id' });
+    if (cliente) {
+      await supabase.from('conversas').upsert({
+        cliente_id: clienteId,
+        nome_cliente: `${cliente?.nome || 'Cliente'} ${cliente?.sobrenome || ''}`.trim(),
+        email_cliente: cliente.email,
+        ultima_mensagem: fileData ? `📎 ${fileData.nome}` : conteudo,
+        ultima_mensagem_em: new Date().toISOString()
+      }, { onConflict: 'cliente_id' });
+    }
 
     return msg;
   },
@@ -141,9 +138,9 @@ export const chatService = {
     if (!clienteId) return null;
     return supabase
       .channel(`chat_${clienteId}`)
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
         table: 'mensagens_chat',
         filter: `cliente_id=eq.${clienteId}`
       }, (payload) => callback(payload.new))
