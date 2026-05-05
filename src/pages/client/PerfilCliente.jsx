@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, Phone, Shield, Lock, Save, LogOut } from 'lucide-react';
+import { User, Mail, Phone, Shield, Lock, Save, LogOut, Eye, EyeOff, Key } from 'lucide-react';
 import ClienteLayout from '../../layouts/ClienteLayout';
 import { clientAuthService } from '../../services/clientAuthService';
+import { supabase } from '../../services/supabase';
 import { useToast } from '../../hooks/useToast';
-import api from '../../services/api'; // Importar o axios configurado
+import api from '../../services/api';
 
 export default function PerfilCliente() {
   const toast = useToast();
@@ -17,6 +18,15 @@ export default function PerfilCliente() {
     cpf: ''
   });
   const [saving, setSaving] = useState(false);
+
+  // Estado para alteração de senha
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    novaSenha: '',
+    confirmarSenha: ''
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   // Buscar dados do cliente ao carregar a página
   useEffect(() => {
@@ -50,6 +60,32 @@ export default function PerfilCliente() {
       toast.error('Erro ao salvar alterações.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (passwordData.novaSenha.length < 6) {
+      toast.error('A nova senha deve ter no mínimo 6 caracteres.');
+      return;
+    }
+    if (passwordData.novaSenha !== passwordData.confirmarSenha) {
+      toast.error('As senhas não coincidem.');
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.novaSenha
+      });
+      if (error) throw error;
+      toast.success('Senha alterada com sucesso!');
+      setShowChangePassword(false);
+      setPasswordData({ novaSenha: '', confirmarSenha: '' });
+    } catch (error) {
+      toast.error('Erro ao alterar senha: ' + error.message);
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -130,12 +166,71 @@ export default function PerfilCliente() {
               <Lock size={16} className="text-purple-400" />
               Segurança
             </h3>
-            <p className="text-sm text-slate-500 mb-6 leading-relaxed">
-              Deseja alterar sua senha de acesso? Por segurança, enviaremos um link de confirmação no seu e-mail.
-            </p>
-            <button onClick={() => toast.info("Funcionalidade em desenvolvimento")} className="w-full bg-white/5 border border-white/10 text-white font-bold py-4 rounded-2xl hover:bg-white/10 transition-all">
-              Alterar Senha
-            </button>
+
+            {showChangePassword ? (
+              <form onSubmit={handleChangePassword} className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nova Senha</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        minLength={6}
+                        className="w-full bg-slate-800/50 border border-white/5 rounded-2xl py-4 px-5 text-white focus:outline-none focus:border-purple-500/50 transition-all"
+                        value={passwordData.novaSenha}
+                        onChange={(e) => setPasswordData({...passwordData, novaSenha: e.target.value})}
+                        placeholder="Mínimo 6 caracteres"
+                      />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-4 text-slate-500 hover:text-white">
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Confirmar Senha</label>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      minLength={6}
+                      className="w-full bg-slate-800/50 border border-white/5 rounded-2xl py-4 px-5 text-white focus:outline-none focus:border-purple-500/50 transition-all"
+                      value={passwordData.confirmarSenha}
+                      onChange={(e) => setPasswordData({...passwordData, confirmarSenha: e.target.value})}
+                      placeholder="Repita a nova senha"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="submit"
+                    disabled={changingPassword}
+                    className="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-2xl transition-all disabled:opacity-50"
+                  >
+                    {changingPassword ? 'Salvando...' : 'Confirmar'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowChangePassword(false)}
+                    className="flex-1 bg-white/5 border border-white/10 text-white font-bold py-4 rounded-2xl hover:bg-white/10 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div>
+                <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+                  Mantenha sua conta segura alterando sua senha periodicamente.
+                </p>
+                <button
+                  onClick={() => setShowChangePassword(true)}
+                  className="w-full bg-white/5 border border-white/10 text-white font-bold py-4 rounded-2xl hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+                >
+                  <Key size={18} />
+                  Alterar Senha
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="bg-rose-500/5 border border-rose-500/10 rounded-[2.5rem] p-8">
