@@ -12,7 +12,7 @@ const Toggle = ({ enabled, onChange, label, description }) => (
       <p className="font-bold text-white mb-1">{label}</p>
       <p className="text-xs text-slate-500">{description}</p>
     </div>
-    <button 
+    <button
       onClick={() => onChange(!enabled)}
       className={`w-14 h-8 rounded-full relative transition-colors duration-300 ${enabled ? 'bg-purple-600' : 'bg-slate-700'}`}
     >
@@ -25,6 +25,7 @@ export default function ConfiguracoesCliente() {
   const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [cliente, setCliente] = useState(null);
   const [config, setConfig] = useState({
     responder_automatico: true,
     pausar_ia: false,
@@ -35,9 +36,17 @@ export default function ConfiguracoesCliente() {
     mensagem_ausencia: ''
   });
 
-  const cliente = clientAuthService.getClienteLogado();
+  // Buscar o cliente de forma assíncrona
+  useEffect(() => {
+    async function loadCliente() {
+      const data = await clientAuthService.getClienteLogado();
+      setCliente(data);
+    }
+    loadCliente();
+  }, []);
 
   const loadData = async () => {
+    if (!cliente?.id) return;
     try {
       setLoading(true);
       const data = await clientSettingsService.getSettings(cliente.id);
@@ -50,10 +59,13 @@ export default function ConfiguracoesCliente() {
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (cliente) {
+      loadData();
+    }
+  }, [cliente]);
 
   const handleSave = async () => {
+    if (!cliente?.id) return;
     setSaving(true);
     try {
       await clientSettingsService.saveSettings(cliente.id, config);
@@ -72,7 +84,7 @@ export default function ConfiguracoesCliente() {
           <h1 className="text-4xl font-black text-white tracking-tighter mb-2">Configurações</h1>
           <p className="text-slate-500 font-medium">Controle operacional da sua conta e do assistente.</p>
         </div>
-        <button 
+        <button
           onClick={handleSave}
           className="hidden md:flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-black rounded-2xl shadow-xl transition-all"
         >
@@ -82,22 +94,22 @@ export default function ConfiguracoesCliente() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
+
         <div className="space-y-6">
           <div className="bg-slate-900/40 border border-white/5 rounded-[2.5rem] p-8">
             <h3 className="text-white font-black uppercase tracking-widest text-xs mb-8 flex items-center gap-2">
               <Bot size={16} className="text-purple-400" />
               Inteligência Artificial
             </h3>
-            
+
             <div className="space-y-4">
-              <Toggle 
+              <Toggle
                 enabled={config.responder_automatico}
                 onChange={(v) => setConfig({...config, responder_automatico: v})}
                 label="Automação Ativa"
                 description="Permite que a IA responda mensagens automaticamente."
               />
-              <Toggle 
+              <Toggle
                 enabled={config.pausar_ia}
                 onChange={(v) => setConfig({...config, pausar_ia: v})}
                 label="Pausar IA Temporariamente"
@@ -111,7 +123,7 @@ export default function ConfiguracoesCliente() {
               <Bell size={16} className="text-blue-400" />
               Notificações de Sistema
             </h3>
-            <Toggle 
+            <Toggle
               enabled={config.notificar_novas_mensagens}
               onChange={(v) => setConfig({...config, notificar_novas_mensagens: v})}
               label="Alertas de Novas Mensagens"
@@ -125,9 +137,9 @@ export default function ConfiguracoesCliente() {
             <Clock size={16} className="text-cyan-400" />
             Horário de Funcionamento
           </h3>
-          
+
           <div className="space-y-8">
-            <Toggle 
+            <Toggle
               enabled={config.horario_atendimento_ativo}
               onChange={(v) => setConfig({...config, horario_atendimento_ativo: v})}
               label="Restringir por Horário"
@@ -137,7 +149,7 @@ export default function ConfiguracoesCliente() {
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Início</label>
-                <input 
+                <input
                   type="time"
                   className="w-full bg-slate-800/50 border border-white/5 rounded-2xl py-4 px-6 text-white focus:outline-none"
                   value={config.horario_inicio}
@@ -146,7 +158,7 @@ export default function ConfiguracoesCliente() {
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Término</label>
-                <input 
+                <input
                   type="time"
                   className="w-full bg-slate-800/50 border border-white/5 rounded-2xl py-4 px-6 text-white focus:outline-none"
                   value={config.horario_fim}
@@ -157,7 +169,7 @@ export default function ConfiguracoesCliente() {
 
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Mensagem de Ausência</label>
-              <textarea 
+              <textarea
                 rows={4}
                 className="w-full bg-slate-800/50 border border-white/5 rounded-2xl py-4 px-6 text-white placeholder:text-slate-600 focus:outline-none resize-none"
                 placeholder="Ex: Olá! No momento estamos fora do horário de atendimento. Retornaremos em breve."
