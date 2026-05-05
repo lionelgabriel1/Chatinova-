@@ -1,24 +1,56 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { User, Mail, Phone, Shield, Lock, Save, LogOut } from 'lucide-react';
 import ClienteLayout from '../../layouts/ClienteLayout';
 import { clientAuthService } from '../../services/clientAuthService';
 import { useToast } from '../../hooks/useToast';
+import api from '../../services/api'; // Importar o axios configurado
 
 export default function PerfilCliente() {
   const toast = useToast();
-  const cliente = clientAuthService.getClienteLogado();
+  const [cliente, setCliente] = useState(null);
   const [formData, setFormData] = useState({
-    nome: cliente?.nome || '',
-    sobrenome: cliente?.sobrenome || '',
-    email: cliente?.email || '',
-    telefone: cliente?.telefone || '',
-    cpf: cliente?.cpf || ''
+    nome: '',
+    sobrenome: '',
+    email: '',
+    telefone: '',
+    cpf: ''
   });
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = (e) => {
+  // Buscar dados do cliente ao carregar a página
+  useEffect(() => {
+    async function loadCliente() {
+      const data = await clientAuthService.getClienteLogado();
+      setCliente(data);
+      if (data) {
+        setFormData({
+          nome: data.nome || '',
+          sobrenome: data.sobrenome || '',
+          email: data.email || '',
+          telefone: data.telefone || '',
+          cpf: data.cpf || ''
+        });
+      }
+    }
+    loadCliente();
+  }, []);
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    toast.info('Em desenvolvimento: Perfil');
+    setSaving(true);
+    try {
+      await api.put('/api/client/profile', {
+        nome: formData.nome,
+        sobrenome: formData.sobrenome,
+        telefone: formData.telefone
+      });
+      toast.success('Perfil atualizado com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao salvar alterações.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -39,7 +71,7 @@ export default function PerfilCliente() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome</label>
-                <input 
+                <input
                   className="w-full bg-slate-800/50 border border-white/5 rounded-2xl py-4 px-6 text-white focus:outline-none focus:border-purple-500/50 transition-all"
                   value={formData.nome}
                   onChange={(e) => setFormData({...formData, nome: e.target.value})}
@@ -47,7 +79,7 @@ export default function PerfilCliente() {
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Sobrenome</label>
-                <input 
+                <input
                   className="w-full bg-slate-800/50 border border-white/5 rounded-2xl py-4 px-6 text-white focus:outline-none focus:border-purple-500/50 transition-all"
                   value={formData.sobrenome}
                   onChange={(e) => setFormData({...formData, sobrenome: e.target.value})}
@@ -55,7 +87,7 @@ export default function PerfilCliente() {
               </div>
               <div className="space-y-2 md:col-span-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">E-mail</label>
-                <input 
+                <input
                   type="email"
                   disabled
                   className="w-full bg-slate-800/30 border border-white/5 rounded-2xl py-4 px-6 text-slate-500 cursor-not-allowed"
@@ -64,7 +96,7 @@ export default function PerfilCliente() {
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Telefone</label>
-                <input 
+                <input
                   className="w-full bg-slate-800/50 border border-white/5 rounded-2xl py-4 px-6 text-white focus:outline-none focus:border-purple-500/50 transition-all"
                   value={formData.telefone}
                   onChange={(e) => setFormData({...formData, telefone: e.target.value})}
@@ -72,7 +104,7 @@ export default function PerfilCliente() {
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">CPF</label>
-                <input 
+                <input
                   disabled
                   className="w-full bg-slate-800/30 border border-white/5 rounded-2xl py-4 px-6 text-slate-500 cursor-not-allowed"
                   value={formData.cpf}
@@ -81,12 +113,12 @@ export default function PerfilCliente() {
             </div>
 
             <div className="mt-10 pt-10 border-t border-white/5 flex justify-end">
-              <button 
+              <button
                 type="submit"
-                className="flex items-center gap-3 px-10 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-black rounded-2xl shadow-xl shadow-blue-900/20 active:scale-[0.98] transition-all"
+                disabled={saving}
+                className="flex items-center gap-3 px-10 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-black rounded-2xl shadow-xl shadow-blue-900/20 active:scale-[0.98] transition-all disabled:opacity-50"
               >
-                <Save size={20} />
-                Salvar Alterações
+                {saving ? 'Salvando...' : <><Save size={20} /> Salvar Alterações</>}
               </button>
             </div>
           </form>
@@ -108,7 +140,7 @@ export default function PerfilCliente() {
 
           <div className="bg-rose-500/5 border border-rose-500/10 rounded-[2.5rem] p-8">
             <h3 className="text-rose-500 font-black uppercase tracking-widest text-xs mb-4">Zona de Risco</h3>
-            <button 
+            <button
               onClick={() => clientAuthService.logoutCliente()}
               className="flex items-center justify-center gap-3 w-full py-4 text-rose-500 font-black rounded-2xl hover:bg-rose-500 hover:text-white transition-all"
             >
