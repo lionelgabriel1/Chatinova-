@@ -2,17 +2,23 @@ import api from './api';
 
 export const clientAiMemoryService = {
   /**
-   * Obter configuração de IA de uma instância
+   * Obter configuração de IA (usa a primeira instância se não especificar)
    */
   async getMyMemory(instanceId) {
     try {
-      const response = await api.get(`/api/client/ai-memory/${instanceId}`);
+      // Se não especificar instanceId, chama a rota sem ID (pega a primeira instância)
+      const url = instanceId 
+        ? `/api/client/ai-memory/${instanceId}` 
+        : '/api/client/ai-memory';
+      
+      const response = await api.get(url);
 
       if (!response.data.success) {
         throw new Error(response.data.error || 'Erro ao obter configuração de IA');
       }
 
-      return response.data.aiMemory;
+      // A API retorna { success, memory: {...} } na rota sem ID
+      return response.data.memory || response.data.aiMemory || {};
     } catch (error) {
       console.error('Erro ao obter AI Memory:', error.message);
       throw new Error(error.response?.data?.error || error.message);
@@ -20,25 +26,23 @@ export const clientAiMemoryService = {
   },
 
   /**
-   * Atualizar configuração de IA
+   * Salvar configuração de IA
    */
   async saveMemory(instanceId, aiMemoryData) {
     try {
-      const response = await api.put(`/api/client/ai-memory/${instanceId}`, {
-        persona: aiMemoryData.persona,
-        nicho: aiMemoryData.nicho,
-        tom: aiMemoryData.tom,
-        instrucoes_customizadas: aiMemoryData.instrucoes_customizadas,
-        temperatura: aiMemoryData.temperatura,
-        max_tokens: aiMemoryData.max_tokens,
-        ativa: aiMemoryData.ativa
-      });
+      // Se não especificar instanceId, chama a rota sem ID
+      const url = instanceId 
+        ? `/api/client/ai-memory/${instanceId}` 
+        : '/api/client/ai-memory';
+      
+      // Enviar os campos no formato que a API espera
+      const response = await api.put(url, aiMemoryData);
 
       if (!response.data.success) {
         throw new Error(response.data.error || 'Erro ao atualizar configuração');
       }
 
-      return response.data.aiMemory;
+      return response.data.memory || response.data.aiMemory || {};
     } catch (error) {
       console.error('Erro ao atualizar AI Memory:', error.message);
       throw new Error(error.response?.data?.error || error.message);
@@ -48,10 +52,15 @@ export const clientAiMemoryService = {
   /**
    * Testar IA com um prompt
    */
-  async testAI(pergunta, instanceId) {
+  async testAI(pergunta, instanceId, formData) {
     try {
-      const response = await api.post(`/api/client/ai-memory/${instanceId}/test`, {
-        prompt: pergunta
+      const url = instanceId 
+        ? `/api/client/ai-memory/${instanceId}/test` 
+        : '/api/client/ai-memory/test';
+      
+      const response = await api.post(url, {
+        prompt: pergunta,
+        ...(formData || {})
       });
 
       if (!response.data.success) {

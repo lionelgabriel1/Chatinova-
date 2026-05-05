@@ -2,25 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { maintenanceService } from '../services/maintenanceService';
 import MaintenanceGate from '../pages/MaintenanceGate';
 import { Loader2 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+
+// Páginas onde não devemos incomodar com erros
+const publicPages = ['/login', '/cadastro', '/esqueci-senha', '/'];
 
 export default function MaintenanceGuard({ children }) {
   const [maintenance, setMaintenance] = useState({ enabled: false, loading: true });
   const [unlocked, setUnlocked] = useState(maintenanceService.isUnlocked());
+  const location = useLocation();
 
   useEffect(() => {
-    // 1. Carregar status inicial
+    const isPublic = publicPages.some(p => location.pathname.startsWith(p));
+
     const checkInitialStatus = async () => {
-      const status = await maintenanceService.getStatus();
-      setMaintenance({ enabled: status.enabled, loading: false });
+      try {
+        const status = await maintenanceService.getStatus();
+        setMaintenance({ enabled: status.enabled, loading: false });
+      } catch (error) {
+        // Em páginas públicas, apenas desabilita manutenção silenciosamente
+        console.warn('Manutenção: usando fallback (desabilitado)');
+        setMaintenance({ enabled: false, loading: false });
+      }
     };
 
     checkInitialStatus();
 
-    // 2. Realtime para bloqueio/liberação imediata
     const subscription = maintenanceService.subscribeStatus((newStatus) => {
       setMaintenance({ enabled: newStatus.enabled, loading: false });
-      
-      // Se a manutenção for desativada, garantir que a sessão de desbloqueio seja limpa
       if (!newStatus.enabled) {
         maintenanceService.setUnlocked(false);
         setUnlocked(false);
@@ -30,9 +39,8 @@ export default function MaintenanceGuard({ children }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [location.pathname]);
 
-  // Se estiver carregando as configurações do banco
   if (maintenance.loading) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center">
@@ -41,11 +49,9 @@ export default function MaintenanceGuard({ children }) {
     );
   }
 
-  // Se modo manutenção ATIVO e usuário NÃO DESBLOQUEOU com senha
   if (maintenance.enabled && !unlocked) {
     return <MaintenanceGate />;
   }
 
-  // Caso contrário, renderiza o App normalmente
   return children;
 }

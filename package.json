@@ -1,34 +1,39 @@
 {
-  "name": "chatinova",
+  "name": "inovachat",
   "version": "1.0.0",
-  "type": "module",
+  "description": "",
+  "main": "index.js",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && npm run postbuild",
+    "postbuild": "chown -R www-data:www-data /var/www/inovachat && systemctl reload nginx && echo '✅ Deploy concluído!'",
     "preview": "vite preview"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "@hookform/resolvers": "^3.3.4",
-    "zod": "^3.22.4",
-    "@supabase/supabase-js": "^2.38.4",
+    "@hookform/resolvers": "^5.2.2",
     "@rive-app/react-canvas": "^4.28.2",
-    "axios": "^1.6.2",
-    "date-fns": "^3.0.0",
-    "emoji-picker-react": "^4.9.0",
-    "framer-motion": "^11.0.0",
-    "lucide-react": "^0.447.0",
-    "qrcode.react": "^3.1.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-hook-form": "^7.51.0",
-    "react-router-dom": "^6.26.0",
-    "recharts": "^2.12.0"
+    "@supabase/supabase-js": "^2.104.1",
+    "@tailwindcss/postcss": "^4.2.4",
+    "@vitejs/plugin-react": "^6.0.1",
+    "autoprefixer": "^10.5.0",
+    "axios": "^1.15.2",
+    "date-fns": "^4.1.0",
+    "emoji-picker-react": "^4.19.0",
+    "framer-motion": "^12.38.0",
+    "lucide-react": "^1.11.0",
+    "postcss": "^8.5.10",
+    "qrcode.react": "^4.2.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-hook-form": "^7.74.0",
+    "react-router-dom": "^7.14.2",
+    "recharts": "^3.8.1",
+    "tailwindcss": "^4.2.4",
+    "vite": "^8.0.10",
+    "zod": "^4.3.6"
   },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.1",
-    "autoprefixer": "^10.4.19",
-    "postcss": "^8.4.38",
-    "tailwindcss": "^3.4.4",
-    "vite": "^5.4.0"
-  }
+  "type": "module"
 }
